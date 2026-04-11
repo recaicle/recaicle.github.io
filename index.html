@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>recAIcle — AI-Powered Waste Sorting</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --forest: #0d1f0f;
+    --deep: #071209;
+    --mint: #a8f0c6;
+    --lime: #c6f135;
+    --glow: #4dff91;
+    --muted: #4a6650;
+    --card-bg: #111f13;
+    --card-border: #1e3622;
+    --text: #e8f5eb;
+    --text-dim: #7a9e82;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--forest);
+    color: var(--text);
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  #cursor {
+    width: 10px; height: 10px;
+    background: var(--glow);
+    border-radius: 50%;
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9999;
+    transition: transform 0.15s ease, opacity 0.2s;
+    transform: translate(-50%, -50%);
+    mix-blend-mode: screen;
+  }
+  #cursor-ring {
+    width: 36px; height: 36px;
+    border: 1px solid var(--glow);
+    border-radius: 50%;
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.35s cubic-bezier(.25,.8,.25,1), width 0.3s, height 0.3s, opacity 0.2s;
+    opacity: 0.5;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    backdrop-filter: blur(16px);
+    background: rgba(7,18,9,0.7);
+    border-bottom: 1px solid rgba(168,240,198,0.06);
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 800;
+    color: var(--glow);
+    letter-spacing: -0.5px;
+  }
+  .nav-logo span { color: var(--text-dim); font-weight: 400; }
+  .nav-links { display: flex; gap: 36px; list-style: none; }
+  .nav-links a {
+    color: var(--text-dim); text-decoration: none;
+    font-size: 14px; font-weight: 500; letter-spacing: 0.3px;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--mint); }
+  .nav-cta {
+    background: var(--glow); color: var(--deep);
+    padding: 10px 22px; border-radius: 100px;
+    font-size: 14px; font-weight: 700;
+    text-decoration: none; font-family: 'Syne', sans-serif;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .nav-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 24px rgba(77,255,145,0.4);
+  }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    padding: 120px 48px 80px;
+  }
+
+  /* Animated background mesh */
+  .bg-mesh {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 50%, rgba(77,255,145,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 80% 30%, rgba(198,241,53,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 80% at 50% 100%, rgba(13,31,15,0) 0%, var(--deep) 100%);
+  }
+
+  /* Floating particles */
+  .particles { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+  .particle {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: var(--glow);
+    border-radius: 50%;
+    opacity: 0;
+    animation: float-up linear infinite;
+  }
+  @keyframes float-up {
+    0% { opacity: 0; transform: translateY(0) scale(1); }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.2; }
+    100% { opacity: 0; transform: translateY(-80vh) scale(0.3); }
+  }
+
+  .hero-content {
+    position: relative; z-index: 2;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 80px; align-items: center;
+    max-width: 1200px; width: 100%;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(77,255,145,0.08);
+    border: 1px solid rgba(77,255,145,0.2);
+    color: var(--glow); font-size: 12px; font-weight: 500;
+    padding: 6px 14px; border-radius: 100px;
+    margin-bottom: 28px; letter-spacing: 0.5px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px; background: var(--glow);
+    border-radius: 50%; animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 5vw, 68px);
+    font-weight: 800; line-height: 1.05;
+    letter-spacing: -2px; margin-bottom: 24px;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--glow);
+    position: relative;
+  }
+  h1 em::after {
+    content: '';
+    position: absolute; bottom: -4px; left: 0; right: 0;
+    height: 2px; background: var(--glow);
+    animation: underline-grow 1s 0.8s ease both;
+    transform-origin: left;
+  }
+  @keyframes underline-grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  .hero-desc {
+    font-size: 18px; line-height: 1.7;
+    color: var(--text-dim); margin-bottom: 40px;
+    font-weight: 300; max-width: 480px;
+  }
+
+  .hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--glow); color: var(--deep);
+    padding: 14px 32px; border-radius: 100px;
+    font-size: 15px; font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    text-decoration: none; display: inline-block;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 40px rgba(77,255,145,0.5);
+  }
+  .btn-ghost {
+    color: var(--text-dim); text-decoration: none;
+    font-size: 15px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: color 0.2s;
+  }
+  .btn-ghost:hover { color: var(--mint); }
+  .btn-ghost svg { transition: transform 0.2s; }
+  .btn-ghost:hover svg { transform: translateX(4px); }
+
+  .hero-stats {
+    display: flex; gap: 32px; margin-top: 52px;
+    padding-top: 32px; border-top: 1px solid var(--card-border);
+  }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px; font-weight: 800; color: var(--mint);
+  }
+  .stat-label { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  /* ── SCAN UI (hero right) ── */
+  .scan-ui {
+    position: relative; display: flex;
+    align-items: center; justify-content: center;
+    height: 480px;
+  }
+
+  .phone-frame {
+    width: 240px; height: 420px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 36px; overflow: hidden;
+    position: relative; z-index: 2;
+    box-shadow: 0 0 60px rgba(77,255,145,0.08), 0 40px 80px rgba(0,0,0,0.6);
+  }
+  .phone-notch {
+    width: 80px; height: 24px;
+    background: var(--deep); border-radius: 0 0 16px 16px;
+    margin: 0 auto 16px;
+  }
+  .phone-screen {
+    padding: 0 16px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .scan-viewfinder {
+    width: 180px; height: 180px;
+    position: relative; margin-bottom: 20px;
+  }
+  .viewfinder-corner {
+    position: absolute; width: 24px; height: 24px;
+    border-color: var(--glow); border-style: solid;
+  }
+  .viewfinder-corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .viewfinder-corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .viewfinder-corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .viewfinder-corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute; left: 8px; right: 8px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--glow), transparent);
+    top: 0;
+    animation: scan 2.4s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--glow);
+  }
+  @keyframes scan {
+    0% { top: 8px; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: calc(100% - 8px); opacity: 0; }
+  }
+
+  .scan-target {
+    position: absolute; inset: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px; opacity: 0.9;
+    animation: target-switch 6s ease-in-out infinite;
+  }
+  @keyframes target-switch {
+    0%, 25% { opacity: 0.9; transform: scale(1); }
+    30%, 32% { opacity: 0; transform: scale(0.8); }
+    34%, 58% { opacity: 0.9; transform: scale(1); }
+    63%, 65% { opacity: 0; transform: scale(0.8); }
+    67%, 90% { opacity: 0.9; transform: scale(1); }
+    95%, 97% { opacity: 0; transform: scale(0.8); }
+    99%, 100% { opacity: 0.9; transform: scale(1); }
+  }
+
+  .result-chip {
+    background: rgba(77,255,145,0.1);
+    border: 1px solid rgba(77,255,145,0.3);
+    border-radius: 12px; padding: 10px 14px;
+    width: 100%; text-align: left;
+    margin-bottom: 8px;
+    animation: result-appear 2.4s ease-in-out infinite;
+  }
+  @keyframes result-appear {
+    0%, 40% { opacity: 0; transform: translateY(6px); }
+    50%, 90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; }
+  }
+  .result-label { font-size: 10px; color: var(--text-dim); margin-bottom: 3px; }
+  .result-value { font-size: 13px; font-weight: 700; color: var(--glow); font-family: 'Syne', sans-serif; }
+  .result-country { font-size: 10px; color: var(--text-dim); }
+
+  /* Glow rings behind phone */
+  .glow-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(77,255,145,0.1);
+    animation: ring-pulse 4s ease-in-out infinite;
+  }
+  .glow-ring:nth-child(1) { width: 300px; height: 300px; animation-delay: 0s; }
+  .glow-ring:nth-child(2) { width: 420px; height: 420px; animation-delay: 0.8s; }
+  .glow-ring:nth-child(3) { width: 540px; height: 540px; animation-delay: 1.6s; }
+  @keyframes ring-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.08; transform: scale(1.03); }
+  }
+
+  /* ── SECTION BASE ── */
+  section { padding: 100px 48px; max-width: 1200px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    color: var(--glow); text-transform: uppercase; margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 3.5vw, 48px);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -1.5px; margin-bottom: 20px;
+  }
+  .section-desc {
+    font-size: 17px; line-height: 1.7;
+    color: var(--text-dim); max-width: 560px;
+  }
+
+  /* ── HOW IT WORKS ── */
+  #how { position: relative; }
+  .steps-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2px; margin-top: 64px;
+    background: var(--card-border); border-radius: 20px; overflow: hidden;
+  }
+  .step-card {
+    background: var(--card-bg); padding: 40px 32px;
+    position: relative; overflow: hidden;
+    transition: background 0.3s;
+  }
+  .step-card:hover { background: #152118; }
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 72px; font-weight: 800;
+    color: rgba(77,255,145,0.06);
+    position: absolute; top: 20px; right: 24px;
+    line-height: 1; pointer-events: none;
+    transition: color 0.3s;
+  }
+  .step-card:hover .step-num { color: rgba(77,255,145,0.12); }
+  .step-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: rgba(77,255,145,0.08);
+    border: 1px solid rgba(77,255,145,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 24px;
+  }
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px; font-weight: 700;
+    margin-bottom: 12px; letter-spacing: -0.5px;
+  }
+  .step-desc { font-size: 15px; line-height: 1.7; color: var(--text-dim); }
+
+  /* ── FEATURES ── */
+  #features { padding: 100px 48px; }
+  .features-layout {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 80px; align-items: start; margin-top: 64px;
+  }
+  .feature-list { display: flex; flex-direction: column; gap: 4px; }
+  .feature-item {
+    padding: 24px 28px; border-radius: 16px;
+    border: 1px solid transparent;
+    cursor: pointer; transition: all 0.3s;
+  }
+  .feature-item:hover, .feature-item.active {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+  }
+  .feature-item.active { border-color: rgba(77,255,145,0.2); }
+  .feature-item-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 8px;
+  }
+  .feature-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(77,255,145,0.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .feature-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 700;
+  }
+  .feature-desc { font-size: 14px; color: var(--text-dim); line-height: 1.6; padding-left: 50px; }
+  .feature-visual {
+    position: sticky; top: 100px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 24px; padding: 40px; min-height: 360px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .feature-demo { text-align: center; }
+  .demo-globe {
+    font-size: 80px; margin-bottom: 20px;
+    animation: spin-slow 12s linear infinite;
+    display: block;
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .country-chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center; max-width: 280px;
+  }
+  .chip {
+    background: rgba(77,255,145,0.08);
+    border: 1px solid rgba(77,255,145,0.15);
+    color: var(--mint); font-size: 12px; font-weight: 500;
+    padding: 5px 12px; border-radius: 100px;
+  }
+
+  /* ── COUNTRIES ── */
+  #countries { background: var(--deep); padding: 80px 48px; border-radius: 0; }
+  #countries .inner { max-width: 1200px; margin: 0 auto; }
+  .country-scroll {
+    display: flex; gap: 12px; margin-top: 40px;
+    flex-wrap: wrap;
+  }
+  .country-tag {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    padding: 10px 18px; border-radius: 100px;
+    font-size: 13px; transition: border-color 0.2s, color 0.2s;
+  }
+  .country-tag:hover { border-color: rgba(77,255,145,0.3); color: var(--mint); }
+  .country-flag { font-size: 16px; }
+
+  /* ── PREMIUM ── */
+  #premium { padding: 100px 48px; }
+  .premium-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 16px; margin-top: 64px;
+  }
+  .premium-card {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 20px; padding: 32px;
+    transition: border-color 0.3s, transform 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .premium-card::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--glow), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .premium-card:hover { border-color: rgba(77,255,145,0.25); transform: translateY(-2px); }
+  .premium-card:hover::before { opacity: 1; }
+  .premium-icon { font-size: 28px; margin-bottom: 18px; display: block; }
+  .premium-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px; font-weight: 700;
+    margin-bottom: 10px; letter-spacing: -0.3px;
+  }
+  .premium-desc { font-size: 14px; line-height: 1.7; color: var(--text-dim); }
+
+  /* ── CTA ── */
+  #cta {
+    padding: 120px 48px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .cta-glow {
+    position: absolute; top: 50%; left: 50%;
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse, rgba(77,255,145,0.08) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  #cta h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 4vw, 56px);
+    font-weight: 800; letter-spacing: -2px;
+    margin-bottom: 20px; position: relative;
+  }
+  #cta p {
+    font-size: 18px; color: var(--text-dim);
+    margin-bottom: 48px; position: relative;
+  }
+  .store-btns {
+    display: flex; gap: 16px; justify-content: center;
+    flex-wrap: wrap; position: relative;
+  }
+  .store-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 16px; padding: 14px 28px;
+    text-decoration: none; color: var(--text);
+    transition: border-color 0.3s, transform 0.2s;
+    font-size: 14px;
+  }
+  .store-btn:hover { border-color: rgba(77,255,145,0.3); transform: translateY(-2px); }
+  .store-icon { font-size: 28px; }
+  .store-sub { font-size: 11px; color: var(--text-dim); }
+  .store-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--card-border);
+    padding: 40px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    max-width: 100%;
+  }
+  .footer-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px; font-weight: 800; color: var(--glow);
+  }
+  .footer-note { font-size: 13px; color: var(--text-dim); }
+
+  /* ── SCROLL ANIMATIONS ── */
+  .reveal {
+    opacity: 0; transform: translateY(28px);
+    transition: opacity 0.7s cubic-bezier(.25,.8,.25,1), transform 0.7s cubic-bezier(.25,.8,.25,1);
+  }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    section { padding: 64px 24px; }
+    .hero-content { grid-template-columns: 1fr; gap: 48px; text-align: center; }
+    .hero-desc { max-width: 100%; }
+    .hero-stats { justify-content: center; }
+    .btn-primary, .btn-ghost { align-self: center; }
+    .hero-actions { justify-content: center; }
+    .scan-ui { height: 360px; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .features-layout { grid-template-columns: 1fr; }
+    .feature-visual { display: none; }
+    .premium-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">rec<span>AI</span>cle</div>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#countries">Countries</a></li>
+    <li><a href="#premium">Premium</a></li>
+  </ul>
+  <a href="#cta" class="nav-cta">Get the app</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="bg-mesh"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="hero-content">
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        AI-powered · Available worldwide
+      </div>
+      <h1>Sort waste<br/>with <em>one photo</em></h1>
+      <p class="hero-desc">
+        Point your camera at any piece of trash. recAIcle instantly tells you exactly where to throw it — based on the real regulations of your country.
+      </p>
+      <div class="hero-actions">
+        <a href="#cta" class="btn-primary">Download free</a>
+        <a href="#how" class="btn-ghost">
+          See how it works
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="stat-num">50+</div>
+          <div class="stat-label">Countries supported</div>
+        </div>
+        <div>
+          <div class="stat-num">95%</div>
+          <div class="stat-label">Classification accuracy</div>
+        </div>
+        <div>
+          <div class="stat-num">0 sec</div>
+          <div class="stat-label">Learning curve</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scan-ui">
+      <div class="glow-ring"></div>
+      <div class="glow-ring"></div>
+      <div class="glow-ring"></div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="scan-viewfinder">
+            <div class="viewfinder-corner tl"></div>
+            <div class="viewfinder-corner tr"></div>
+            <div class="viewfinder-corner bl"></div>
+            <div class="viewfinder-corner br"></div>
+            <div class="scan-line"></div>
+            <div class="scan-target" id="scan-target">🥤</div>
+          </div>
+          <div class="result-chip">
+            <div class="result-label">RESULT</div>
+            <div class="result-value" id="result-value">♻️ Plastic recycling bin</div>
+            <div class="result-country" id="result-country">🇯🇵 Japan · Rinse before disposal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title reveal">Three steps.<br/>Zero confusion.</h2>
+  <p class="section-desc reveal">No manuals. No lookup tables. Just point, scan, and toss with confidence.</p>
+
+  <div class="steps-grid reveal">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-icon">🌍</div>
+      <div class="step-title">Choose your country</div>
+      <p class="step-desc">Select where you are. recAIcle loads the exact waste regulations for your location — down to the city level for premium users.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-icon">📸</div>
+      <div class="step-title">Snap a photo</div>
+      <p class="step-desc">Open the in-app camera and point it at whatever you're not sure about. Our AI identifies the item in under a second.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-icon">✅</div>
+      <div class="step-title">Toss it right</div>
+      <p class="step-desc">Get a clear, localized answer: which bin, how to prepare it, and why. No guessing, no fines, no contaminated recycling batches.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label">Features</div>
+  <h2 class="section-title reveal">Built for real life,<br/>not just demos.</h2>
+
+  <div class="features-layout">
+    <div class="feature-list reveal">
+      <div class="feature-item active">
+        <div class="feature-item-header">
+          <div class="feature-icon">🌐</div>
+          <div class="feature-name">Multi-country regulations</div>
+        </div>
+        <p class="feature-desc">Japan, Germany, Taiwan, South Korea — every country has different rules. We've built a continuously updated database so you don't have to.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-item-header">
+          <div class="feature-icon">🤖</div>
+          <div class="feature-name">AI image recognition</div>
+        </div>
+        <p class="feature-desc">Our model is trained specifically on waste items — not just generic objects. It handles crumpled, dirty, and unlabelled items.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-item-header">
+          <div class="feature-icon">🧩</div>
+          <div class="feature-name">Composite material guide</div>
+        </div>
+        <p class="feature-desc">That coffee cup with an aluminium lining? We break it apart and tell you where each component goes — step by step.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-item-header">
+          <div class="feature-icon">📊</div>
+          <div class="feature-name">Personal eco footprint</div>
+        </div>
+        <p class="feature-desc">Track every item you've sorted correctly. See your monthly impact in kg of recycled material and CO₂ equivalent saved.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feature-item-header">
+          <div class="feature-icon">✈️</div>
+          <div class="feature-name">Offline mode for travelers</div>
+        </div>
+        <p class="feature-desc">Download a country's full ruleset before you land. Works without WiFi — perfect when you're standing at a Tokyo convenience store bin.</p>
+      </div>
+    </div>
+
+    <div class="feature-visual reveal">
+      <div class="feature-demo">
+        <span class="demo-globe">🌍</span>
+        <div class="country-chips">
+          <span class="chip">🇯🇵 Japan</span>
+          <span class="chip">🇩🇪 Germany</span>
+          <span class="chip">🇹🇼 Taiwan</span>
+          <span class="chip">🇰🇷 South Korea</span>
+          <span class="chip">🇫🇷 France</span>
+          <span class="chip">🇺🇸 USA</span>
+          <span class="chip">🇬🇧 UK</span>
+          <span class="chip">🇸🇬 Singapore</span>
+          <span class="chip">+43 more</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COUNTRIES -->
+<div id="countries">
+  <div class="inner">
+    <div class="section-label">Coverage</div>
+    <h2 class="section-title reveal">Wherever you are.</h2>
+    <p class="section-desc reveal">Waste rules differ not just by country — but by city and district. We cover them all.</p>
+    <div class="country-scroll reveal">
+      <div class="country-tag"><span class="country-flag">🇯🇵</span> Japan</div>
+      <div class="country-tag"><span class="country-flag">🇩🇪</span> Germany</div>
+      <div class="country-tag"><span class="country-flag">🇹🇼</span> Taiwan</div>
+      <div class="country-tag"><span class="country-flag">🇰🇷</span> South Korea</div>
+      <div class="country-tag"><span class="country-flag">🇺🇸</span> United States</div>
+      <div class="country-tag"><span class="country-flag">🇬🇧</span> United Kingdom</div>
+      <div class="country-tag"><span class="country-flag">🇫🇷</span> France</div>
+      <div class="country-tag"><span class="country-flag">🇸🇬</span> Singapore</div>
+      <div class="country-tag"><span class="country-flag">🇦🇺</span> Australia</div>
+      <div class="country-tag"><span class="country-flag">🇨🇦</span> Canada</div>
+      <div class="country-tag"><span class="country-flag">🇳🇱</span> Netherlands</div>
+      <div class="country-tag"><span class="country-flag">🇸🇪</span> Sweden</div>
+      <div class="country-tag"><span class="country-flag">🇨🇭</span> Switzerland</div>
+      <div class="country-tag"><span class="country-flag">🇦🇹</span> Austria</div>
+      <div class="country-tag"><span class="country-flag">🇮🇹</span> Italy</div>
+      <div class="country-tag"><span class="country-flag">🇪🇸</span> Spain</div>
+      <div class="country-tag"><span class="country-flag">🇧🇷</span> Brazil</div>
+      <div class="country-tag"><span class="country-flag">🇮🇳</span> India</div>
+      <div class="country-tag">+32 more →</div>
+    </div>
+  </div>
+</div>
+
+<!-- PREMIUM -->
+<section id="premium">
+  <div class="section-label">Premium</div>
+  <h2 class="section-title reveal">For people who<br/>actually care.</h2>
+  <p class="section-desc reveal">Premium isn't about removing ads. It's about features that genuinely change how you sort waste every day.</p>
+
+  <div class="premium-grid reveal">
+    <div class="premium-card">
+      <span class="premium-icon">🗂️</span>
+      <div class="premium-title">Scan history & eco footprint</div>
+      <p class="premium-desc">Every item you scan is logged. See monthly stats — kg of waste sorted, CO₂ saved, and a breakdown by category. Make your impact visible.</p>
+    </div>
+    <div class="premium-card">
+      <span class="premium-icon">🧩</span>
+      <div class="premium-title">Composite material breakdown</div>
+      <p class="premium-desc">AI identifies each layer of complex items — a foil-lined paper cup, a labelled glass bottle — and gives you step-by-step disposal instructions.</p>
+    </div>
+    <div class="premium-card">
+      <span class="premium-icon">✈️</span>
+      <div class="premium-title">Offline mode</div>
+      <p class="premium-desc">Download full ruleset for any country before you travel. No WiFi needed — ideal for Japan, Germany, or any country with strict sorting rules.</p>
+    </div>
+    <div class="premium-card">
+      <span class="premium-icon">📍</span>
+      <div class="premium-title">City-level precision</div>
+      <p class="premium-desc">Rules in Tokyo differ from Osaka. Premium users get district-level accuracy, not just national defaults. The most precise sorting guide available.</p>
+    </div>
+    <div class="premium-card">
+      <span class="premium-icon">⚡</span>
+      <div class="premium-title">Home screen widget</div>
+      <p class="premium-desc">One tap from your home screen launches the scanner instantly. Because when you're standing at a bin with full hands, every second counts.</p>
+    </div>
+    <div class="premium-card">
+      <span class="premium-icon">🏢</span>
+      <div class="premium-title">B2B ESG dashboard</div>
+      <p class="premium-desc">For companies. Deploy to your team, track collective waste compliance, and export reports for ESG disclosures — all from one dashboard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-glow"></div>
+  <h2 class="reveal">Start sorting smarter.</h2>
+  <p class="reveal">Free to download. No account required to start.</p>
+  <div class="store-btns reveal">
+    <a href="#" class="store-btn">
+      <span class="store-icon">🍎</span>
+      <div>
+        <div class="store-sub">Download on the</div>
+        <div class="store-name">App Store</div>
+      </div>
+    </a>
+    <a href="#" class="store-btn">
+      <span class="store-icon">▶</span>
+      <div>
+        <div class="store-sub">Get it on</div>
+        <div class="store-name">Google Play</div>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">recAIcle</div>
+  <div class="footer-note">© 2025 recAIcle · Making recycling simple, everywhere.</div>
+</footer>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  function animateCursor() {
+    cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+    rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(animateCursor);
+  }
+  animateCursor();
+  document.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('mouseenter', () => { ring.style.width = '56px'; ring.style.height = '56px'; cursor.style.transform = 'translate(-50%,-50%) scale(2)'; });
+    el.addEventListener('mouseleave', () => { ring.style.width = '36px'; ring.style.height = '36px'; cursor.style.transform = 'translate(-50%,-50%) scale(1)'; });
+  });
+
+  // Particles
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.bottom = '-4px';
+    p.style.animationDuration = (8 + Math.random() * 14) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    p.style.width = p.style.height = (1 + Math.random() * 2.5) + 'px';
+    container.appendChild(p);
+  }
+
+  // Scan target cycle
+  const targets = ['🥤','🍶','📦','🗞️','🥫','🍾'];
+  const results = [
+    ['♻️ Plastic recycling bin', '🇯🇵 Japan · Rinse before disposal'],
+    ['♻️ Glass bin', '🇩🇪 Germany · Remove cap first'],
+    ['📦 Cardboard bin', '🇹🇼 Taiwan · Flatten before recycling'],
+    ['📰 Paper recycling', '🇰🇷 South Korea · Keep dry'],
+    ['🥫 Metal recycling', '🇩🇪 Germany · Crush to save space'],
+    ['🍾 Glass recycling', '🇫🇷 France · Drop at glass bank'],
+  ];
+  let idx = 0;
+  setInterval(() => {
+    idx = (idx + 1) % targets.length;
+    document.getElementById('scan-target').textContent = targets[idx];
+    document.getElementById('result-value').textContent = results[idx][0];
+    document.getElementById('result-country').textContent = results[idx][1];
+  }, 3000);
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+  }, { threshold: 0.12 });
+  reveals.forEach(el => obs.observe(el));
+
+  // Feature item interactivity
+  document.querySelectorAll('.feature-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.feature-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
